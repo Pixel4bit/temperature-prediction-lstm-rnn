@@ -1,249 +1,448 @@
 import streamlit as st
+
 import pandas as pd
 import numpy as np
-from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import mean_squared_error, r2_score
 import altair as alt
+import matplotlib.pyplot as plt
+plt.style.use('seaborn-v0_8-whitegrid')
+plt.style.use('seaborn-v0_8-notebook')
+
+from keras.models import load_model
+from keras.losses import MeanSquaredError
+
 import time
 import zipfile
 
+# parameter
+
+data_latih_x = pd.read_csv('https://raw.githubusercontent.com/Pixel4bit/Data-BMKG/main/hasil/csv/data_latih_x.csv')
+data_latih_y = pd.read_csv('https://raw.githubusercontent.com/Pixel4bit/Data-BMKG/main/hasil/csv/data_latih_y.csv')
+data_test_x = pd.read_csv('https://raw.githubusercontent.com/Pixel4bit/Data-BMKG/main/hasil/csv/data_tes_x.csv')
+data_test_y = pd.read_csv('https://raw.githubusercontent.com/Pixel4bit/Data-BMKG/main/hasil/csv/data_tes_y.csv')
+dataX = pd.read_csv('https://raw.githubusercontent.com/Pixel4bit/Data-BMKG/main/hasil/csv/dataX.csv')
+data_februari = 'https://raw.githubusercontent.com/Pixel4bit/Data-BMKG/main/Raw_Dataset_BMKG_2013_2024_Jakarta_Pusat.csv'
+data_juni = 'https://raw.githubusercontent.com/Pixel4bit/Data-BMKG/main/dataset_2024-6/raw_dataset_bmkg_2013_2024-06_jakarta_pusat.csv'
+
+
+size_latih = 90
+epoch = 50
+batch = 32
+val = 10
+
 # Page title
-st.set_page_config(page_title='ML Model Building', page_icon='🤖')
-st.title('🤖 ML Model Building')
+st.set_page_config(page_title='BMKG LSTM Prediction', page_icon='📈')
+st.title('📈 Temperature Prediction with Deep Learning algorithm')
 
-with st.expander('About this app'):
-  st.markdown('**What can this app do?**')
-  st.info('This app allow users to build a machine learning (ML) model in an end-to-end workflow. Particularly, this encompasses data upload, data pre-processing, ML model building and post-model analysis.')
+# Expander
+with st.expander('🌐 **Tentang Website Ini**'):
+  st.markdown('**Apa yang dilakukan website ini?**')
+  st.info('Website ini akan menampilkan hasil prediksi oleh model deep learning dengan algoritma LSTM dan RNN yang sudah dilatih sebelumnya.')
 
-  st.markdown('**How to use the app?**')
-  st.warning('To engage with the app, go to the sidebar and 1. Select a data set and 2. Adjust the model parameters by adjusting the various slider widgets. As a result, this would initiate the ML model building process, display the model results as well as allowing users to download the generated models and accompanying data.')
+  st.markdown('**Bagaimana cara menggunakan Website ini?**')
+  st.warning('Untuk menjalankan website ini cukup sederhana, pengguna hanya cukup mengklik tombol **MULAI** untuk memulai proses inisialisasi model dengan memakai parameter default. Pengguna juga bisa mengatur beberapa parameter deep learning sesuai dengan keinginan pengguna seperti: **Model Deep learning**, **jumlah hari yang ingin diprediksi**, dll. Sebagai hasilnya, website ini akan secara otomatis melakukan semua tahapan proses membangun model Deep Learning, dan menampilkan hasil prediksi model, evaluasi model, parameter model, dan dataset yang digunakan oleh model.')
 
-  st.markdown('**Under the hood**')
-  st.markdown('Data sets:')
-  st.code('''- Drug solubility data set
+  st.markdown('**Informasi tambahan**')
+  st.markdown('Dataset:')
+  st.code('''- Data Iklim harian BMKG Stasiun Meteorologi Kemayoran Jakarta Pusat
+- Rentang Waktu: 01 Januari 2013 s.d 01 Februari 2024
+- Sumber: https://dataonline.bmkg.go.id/
   ''', language='markdown')
   
-  st.markdown('Libraries used:')
-  st.code('''- Pandas for data wrangling
-- Scikit-learn for building a machine learning model
-- Altair for chart creation
-- Streamlit for user interface
+  st.markdown('Library yang digunakan:')
+  st.code('''- PANDAS untuk analisa data dan manipulasi data
+- NUMPY untuk perhitungan statistik, matriks, dll.
+- KERAS untuk memuat model LSTM yang sudah dilatih
+- SCIKIT-LEARN untuk proses normalisasi data dan evaluasi model LSTM
+- ALTAIR untuk grafik visualisasi
+- STREAMLIT untuk user interface
   ''', language='markdown')
-
 
 # Sidebar for accepting input parameters
 with st.sidebar:
-    # Load data
-    st.header('1.1. Input data')
+    
+    with st.expander('**Tentang Kami**'):
+        st.info('Website ini dibuat oleh tiga mahasiswa dari Universitas Bina Sarana Informatika Prodi S1 Sistem Informasi')
+        st.code('''Pengembang:
+Ahmad Haitami Hatta
+Alvian Ibnu Farhan
+Dzulfiqar Ramazan
+''', )
 
-    st.markdown('**1. Use custom data**')
-    uploaded_file = st.file_uploader("Upload a CSV file", type=["csv"])
-    if uploaded_file is not None:
-        df = pd.read_csv(uploaded_file, index_col=False)
-      
-    # Download example data
-    @st.cache_data
-    def convert_df(input_df):
-        return input_df.to_csv(index=False).encode('utf-8')
-    example_csv = pd.read_csv('https://raw.githubusercontent.com/dataprofessor/data/master/delaney_solubility_with_descriptors.csv')
-    csv = convert_df(example_csv)
-    st.download_button(
-        label="Download example CSV",
-        data=csv,
-        file_name='delaney_solubility_with_descriptors.csv',
-        mime='text/csv',
-    )
+    with st.expander('**Project**'):
+        st.markdown('**Deep Learning**')
+        st.info('Implementasi Model Deep Learning untuk memprediksi pola perubahan suhu di kota Jakarta Pusat')
+        st.button('**Github**')
 
-    # Select example data
-    st.markdown('**1.2. Use example data**')
-    example_data = st.toggle('Load example data')
-    if example_data:
-        df = pd.read_csv('https://raw.githubusercontent.com/dataprofessor/data/master/delaney_solubility_with_descriptors.csv')
+    st.header('Parameters Prediksi')
+    n_model = st.selectbox('Model Deep Learning:', ('LSTM', 'RNN')) 
+    
+    st.write('Model terpilih:', n_model)
 
-    st.header('2. Set Parameters')
-    parameter_split_size = st.slider('Data split ratio (% for Training Set)', 10, 90, 80, 5)
+    n_data = st.checkbox('Update Data')
 
-    st.subheader('2.1. Learning Parameters')
-    with st.expander('See parameters'):
-        parameter_n_estimators = st.slider('Number of estimators (n_estimators)', 0, 1000, 100, 100)
-        parameter_max_features = st.select_slider('Max features (max_features)', options=['all', 'sqrt', 'log2'])
-        parameter_min_samples_split = st.slider('Minimum number of samples required to split an internal node (min_samples_split)', 2, 10, 2, 1)
-        parameter_min_samples_leaf = st.slider('Minimum number of samples required to be at a leaf node (min_samples_leaf)', 1, 10, 2, 1)
-
-    st.subheader('2.2. General Parameters')
-    with st.expander('See parameters', expanded=False):
-        parameter_random_state = st.slider('Seed number (random_state)', 0, 1000, 42, 1)
-        parameter_criterion = st.select_slider('Performance measure (criterion)', options=['squared_error', 'absolute_error', 'friedman_mse'])
-        parameter_bootstrap = st.select_slider('Bootstrap samples when building trees (bootstrap)', options=[True, False])
-        parameter_oob_score = st.select_slider('Whether to use out-of-bag samples to estimate the R^2 on unseen data (oob_score)', options=[False, True])
+    future = st.slider('Jumlah hari yang ingin diprediksi ke masa depan', 5, 365, 365, 5)
+    
+    n_past = st.slider('Pola data masa lalu yang akan dipelajari oleh model', 5, 40, 14, 1)
 
     sleep_time = st.slider('Sleep time', 0, 3, 0)
 
-# Initiate the model building process
-if uploaded_file or example_data: 
-    with st.status("Running ...", expanded=True) as status:
+with st.expander('🤖 **Inisialisasi Model deep learning**', expanded=True):
+    st.info('Klik tombol MULAI dibawah ini untuk memulai proses inisialisasi model')
+    example_data = st.button('MULAI')
     
+
+# Initiate the model building process
+if example_data: 
+    with st.status("Running ...", expanded=True) as status:
+
+        if n_data == True:
+            climate_data = pd.read_csv(data_juni)
+        else:
+            climate_data = pd.read_csv(data_februari)
+        
+        # Reading data
         st.write("Loading data ...")
+        waktu_mulai = time.time()
         time.sleep(sleep_time)
 
+        # preprocessing data
         st.write("Preparing data ...")
-        time.sleep(sleep_time)
-        X = df.iloc[:,:-1]
-        y = df.iloc[:,-1]
-            
+        time.sleep(sleep_time + 1)
+
+        # merubah format tanggal dataset agar sesuai
+        climate_data['Tanggal'] = pd.to_datetime(climate_data['Tanggal'], format='%d/%m/%Y')
+
+        # membuat kolom Tahun dengan mengambil Tahun dari kolom Tanggal
+        climate_data['Tahun'] = climate_data['Tanggal'].dt.year
+
+        # menghitung rata-rata tiap variabel per tahunnya, kecuali RR
+        mean_pertahun = climate_data.groupby('Tahun').transform('mean')
+        mean_pertahun.drop(columns=['RR'], inplace=True)
+
+        # Mengisi semua missing values dengan rata-rata pertahun, kecuali RR
+        climate_data = climate_data.fillna(mean_pertahun)
+
+        # Mengisi missing values pada variabel RR dengan nilai 0 karena tidak setiap hari jakarta mengalami hujan
+        modus = float(climate_data['RR'].mode())
+        climate_data['RR'] = climate_data['RR'].fillna(modus)
+
+        # Mengganti nilai 0 pada kolom 'Tn' dengan nilai rata-rata tahunan yang sesuai
+        climate_data['Tn'] = climate_data.apply(lambda row: mean_pertahun.loc[row.name, 'Tn'] if row['Tn'] == 0 else row['Tn'], axis=1)
+        
+        # Mengubah kolom tanggal menjadi index karena ini merupakan data deret waktu
+        climate_data.set_index('Tanggal', inplace=True)
+
+        # menghapus kolom Tahun karena sudah tidak terpakai
+        climate_data.drop(columns=['Tahun'], inplace=True)
+
+        from sklearn.feature_selection import RFE
+        from sklearn.linear_model import LinearRegression
+
+        x = climate_data.drop(columns=['Tx'], axis=1)
+        y = climate_data['Tx']
+
+        rfe = RFE(estimator=LinearRegression(), n_features_to_select=5)
+        rfe.fit(x, y)
+        
+        #split data
         st.write("Splitting data ...")
         time.sleep(sleep_time)
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=(100-parameter_split_size)/100, random_state=parameter_random_state)
-    
-        st.write("Model training ...")
+
+        y = pd.DataFrame(y)
+        kolom_terpilih = list(y.columns) + list(x.columns[rfe.ranking_ == 1])
+
+        dataset = climate_data.astype(float) # membuat variabel baru untuk menyimpan dataset yang akan dilatih dan merubah nya data nya ke type float untuk kebutuhan proses kalkulasi agar lebih akurat
+        dataset = dataset[kolom_terpilih] # Pemilihan kolom disesuaikan agar sama dengan kolom-kolom yang sudah terpilih dari metode seleksi RFE
+        
+        train_size = int(len(dataset) * 0.9)
+
+        data_untuk_dilatih = dataset[:train_size]
+        data_untuk_ditest = dataset[train_size:]
+
+        st.write("Normalisasi data ...")
         time.sleep(sleep_time)
 
-        if parameter_max_features == 'all':
-            parameter_max_features = None
-            parameter_max_features_metric = X.shape[1]
+        from sklearn.preprocessing import MinMaxScaler
+        scaler = MinMaxScaler()
+        data_untuk_dilatih_scaled = scaler.fit_transform(data_untuk_dilatih)
+        data_untuk_ditest_scaled = scaler.fit_transform(data_untuk_ditest)
+
+        # Model training
+        st.write("Model training ...")
+        time.sleep(sleep_time + 1)
+
+        # membuat set pelatihan
+        # dengan contoh ini kita akan memprediksi data ke 15 dengan menggunakan data ke 0 - 14 untuk proses pelatihan.
+        # kemudian mesin akan menggunakan data ke 1 - 15 untuk memprediksi data ke 16, begitu pula seterusnya.
+
+        trainX = []
+        trainY = []
+
+        n_future = 1 # variabel yang akan memprediksi 1 hari kedepan untuk proses pelatihan
+        #n_past = 14 # variabel yang akan menggunakan 14 data terakhir untuk memprediksi data berikutnya,
+
+        for i in range(n_past, len(data_untuk_dilatih_scaled) - n_future +1):
+            trainX.append(data_untuk_dilatih_scaled[i - n_past:i, 0:data_untuk_dilatih.shape[1]])
+            trainY.append(data_untuk_dilatih_scaled[i + n_future - 1:i + n_future, 0])
+
+        trainX, trainY = np.array(trainX), np.array(trainY)
+
+
+        custom_objects = {'mse': MeanSquaredError()}
+        if n_model == 'RNN':
+            model = load_model('rnn-3.3.3-juni-14-3.01.h5', custom_objects=custom_objects)
+        else:
+            model = load_model('lstm.h5', custom_objects=custom_objects)
         
-        rf = RandomForestRegressor(
-                n_estimators=parameter_n_estimators,
-                max_features=parameter_max_features,
-                min_samples_split=parameter_min_samples_split,
-                min_samples_leaf=parameter_min_samples_leaf,
-                random_state=parameter_random_state,
-                criterion=parameter_criterion,
-                bootstrap=parameter_bootstrap,
-                oob_score=parameter_oob_score)
-        rf.fit(X_train, y_train)
-        
+        #prediksi
         st.write("Applying model to make predictions ...")
-        time.sleep(sleep_time)
-        y_train_pred = rf.predict(X_train)
-        y_test_pred = rf.predict(X_test)
-            
+        time.sleep(sleep_time + 2)
+
+        # membuat set pengujian
+        # dengan contoh ini kita akan memprediksi data ke 15 dengan menggunakan data ke 0 - 14 untuk proses pengujian.
+        # kemudian mesin akan menggunakan data ke 1 - 15 untuk memprediksi data ke 16, begitu pula seterusnya.
+
+        testX = []
+        testY = []
+
+        n_future = 1 # variabel yang akan memprediksi 1 hari kedepan untuk proses pengujian
+        #n_past = 14 # variabel yang akan menggunakan 14 data terakhir untuk memprediksi data berikutnya,
+
+        for i in range(n_past, len(data_untuk_ditest_scaled) - n_future +1):
+            testX.append(data_untuk_ditest_scaled[i - n_past:i, 0:data_untuk_ditest.shape[1]])
+            testY.append(data_untuk_ditest_scaled[i + n_future - 1:i + n_future, 0])
+
+        testX, testY = np.array(testX), np.array(testY)
+
+        forecast_periode_tanggal = pd.date_range(list(climate_data.index)[-1], periods=future, freq='1d').tolist() # untuk mengambil periode 'tanggalan' dari dataset original yaitu climate_data
+
+        forecast = model.predict(testX[-future:]) # melakukan proses prediksi 1 tahun ke masa depan
+
+        # melakukan denormaliasi yaitu proses merubah nilai data ke bentuk/skala yang asli
+
+        forecast_copies = np.repeat(forecast, dataset.shape[1], axis=-1)
+        y_pred_future = scaler.inverse_transform(forecast_copies)[:,0]
+
+        # Membuat tabel untuk menyimpan data hasil prediksi agar lebih mudah untuk dilihat dan di plotting
+
+        data_hasil = pd.DataFrame(y_pred_future, columns=['Prediksi']) # membuat konversi hasil dari perhitungan ke dalam bentuk tabel
+        data_hasil['Tanggal'] = forecast_periode_tanggal # Menambahkan tanggalan agar data mudah dibaca
+        data_hasil.set_index('Tanggal', inplace=True) # menjadikan tanggalan sebagai index karena dataset berupa timeseries
+
+        min_asli = climate_data['Tx'].min()
+        min_prediksi = data_hasil['Prediksi'].min()
+
+        mean_asli = climate_data['Tx'].mean() # mengambil nilai rata-rata dari kolom "Suhu tertinggi"
+        mean_prediksi = data_hasil['Prediksi'].mean() # mengambil nilai rata-rata dari kolom "Prediksi"
+
+        max_asli = climate_data['Tx'].max()
+        max_prediksi = data_hasil['Prediksi'].max()
+
+        anomali_suhu_rata_rata = mean_prediksi - mean_asli
+        anomali_suhu_terendah = min_prediksi - min_asli
+        anomali_suhu_tertinggi = max_prediksi - max_asli
+
+        selisih = pd.DataFrame(data=[[mean_prediksi, mean_asli, anomali_suhu_rata_rata]],
+                       columns=['Tx_avg_prediksi', 'Tx_avg', 'Selisih / Anomali'])
+        
+        # evaluasi
         st.write("Evaluating performance metrics ...")
         time.sleep(sleep_time)
-        train_mse = mean_squared_error(y_train, y_train_pred)
-        train_r2 = r2_score(y_train, y_train_pred)
-        test_mse = mean_squared_error(y_test, y_test_pred)
-        test_r2 = r2_score(y_test, y_test_pred)
         
+        evaluasi_latih = model.predict(trainX)
+        evaluasi_latih_copies = np.repeat(evaluasi_latih, trainX.shape[2], axis=-1)
+        evaluasi_latih = scaler.inverse_transform(evaluasi_latih_copies)[:,0]
+
+        trainY = np.repeat(trainY, trainX.shape[2], axis=-1)
+        trainY = scaler.inverse_transform(trainY)[:,0]
+
+        dataX = pd.DataFrame(trainY, columns=['Aktual'])
+        dataX['Prediksi'] = evaluasi_latih
+        
+        evaluasi_uji = model.predict(testX)
+        evaluasi_uji_copies = np.repeat(evaluasi_uji, testX.shape[2], axis=-1)
+        evaluasi_uji = scaler.inverse_transform(evaluasi_uji_copies)[:,0]
+
+        testY = np.repeat(testY, testX.shape[2], axis=-1)
+        testY = scaler.inverse_transform(testY)[:,0]
+
+        dataY = pd.DataFrame(testY, columns=['Aktual'])
+        dataY['Prediksi'] = evaluasi_uji
+        
+        # evaluasi dipslay
         st.write("Displaying performance metrics ...")
         time.sleep(sleep_time)
-        parameter_criterion_string = ' '.join([x.capitalize() for x in parameter_criterion.split('_')])
-        #if 'Mse' in parameter_criterion_string:
-        #    parameter_criterion_string = parameter_criterion_string.replace('Mse', 'MSE')
-        rf_results = pd.DataFrame(['Random forest', train_mse, train_r2, test_mse, test_r2]).transpose()
-        rf_results.columns = ['Method', f'Training {parameter_criterion_string}', 'Training R2', f'Test {parameter_criterion_string}', 'Test R2']
-        # Convert objects to numerics
-        for col in rf_results.columns:
-            rf_results[col] = pd.to_numeric(rf_results[col], errors='ignore')
-        # Round to 3 digits
-        rf_results = rf_results.round(3)
+        
+        from sklearn.metrics import mean_squared_error, mean_absolute_error
+        def mean_absolute_percentage_error(y_true, y_pred):
+            return np.mean(np.abs((y_true - y_pred) / y_true)) * 100
+
+        mape = mean_absolute_percentage_error(trainY, evaluasi_latih)
+        mae = mean_absolute_error(trainY, evaluasi_latih)
+        mse = mean_squared_error(trainY, evaluasi_latih)
+        rmse = np.sqrt(mse)
+
+        data = {
+            "Metrics": ["MAE", "MAPE", "RMSE"],
+            "Nilai": [mae, mape, rmse]
+        }
+
+        metrics_latih = pd.DataFrame(data)
+
+        mape = mean_absolute_percentage_error(testY, evaluasi_uji)
+        mae = mean_absolute_error(testY, evaluasi_uji)
+        mse = mean_squared_error(testY, evaluasi_uji)
+        rmse = np.sqrt(mse)
+
+        data = {
+            "Metrics": ["MAE", "MAPE", "RMSE"],
+            "Nilai": [mae, mape, rmse]
+        }
+
+        metrics_uji = pd.DataFrame(data)
+
+        waktu_berakhir = time.time()
+        durasi = float(waktu_berakhir - waktu_mulai)
         
     status.update(label="Status", state="complete", expanded=False)
+    st.write(f'*Running time: {round(durasi, 2)} detik*')
 
     # Display data info
     st.header('Input data', divider='rainbow')
     col = st.columns(4)
-    col[0].metric(label="No. of samples", value=X.shape[0], delta="")
-    col[1].metric(label="No. of X variables", value=X.shape[1], delta="")
-    col[2].metric(label="No. of Training samples", value=X_train.shape[0], delta="")
-    col[3].metric(label="No. of Test samples", value=X_test.shape[0], delta="")
+    col[0].metric(label="Jumlah Sampel Data", value=x.shape[0], delta="")
+    col[1].metric(label="Jumlah Variabel", value=climate_data.shape[1], delta="")
+    col[2].metric(label="Jumlah Sampel Pelatihan", value=len(data_untuk_dilatih), delta="")
+    col[3].metric(label="Jumlah Sampel Pengujian", value=len(data_untuk_ditest), delta="")
     
-    with st.expander('Initial dataset', expanded=True):
-        st.dataframe(df, height=210, use_container_width=True)
-    with st.expander('Train split', expanded=False):
+    with st.expander('Dataset Awal', expanded=True):
+        st.dataframe(climate_data, height=210, use_container_width=True)
+    with st.expander('Data latih', expanded=False):
         train_col = st.columns((3,1))
         with train_col[0]:
             st.markdown('**X**')
-            st.dataframe(X_train, height=210, hide_index=True, use_container_width=True)
+            st.dataframe(data_latih_x, height=210, hide_index=True, use_container_width=True)
         with train_col[1]:
             st.markdown('**y**')
-            st.dataframe(y_train, height=210, hide_index=True, use_container_width=True)
-    with st.expander('Test split', expanded=False):
+            st.dataframe(data_latih_y, height=210, hide_index=True, use_container_width=True)
+    with st.expander('Data uji', expanded=False):
         test_col = st.columns((3,1))
         with test_col[0]:
             st.markdown('**X**')
-            st.dataframe(X_test, height=210, hide_index=True, use_container_width=True)
+            st.dataframe(data_test_x, height=210, hide_index=True, use_container_width=True)
         with test_col[1]:
             st.markdown('**y**')
-            st.dataframe(y_test, height=210, hide_index=True, use_container_width=True)
-
-    # Zip dataset files
-    df.to_csv('dataset.csv', index=False)
-    X_train.to_csv('X_train.csv', index=False)
-    y_train.to_csv('y_train.csv', index=False)
-    X_test.to_csv('X_test.csv', index=False)
-    y_test.to_csv('y_test.csv', index=False)
+            st.dataframe(data_test_y, height=210, hide_index=True, use_container_width=True)
     
-    list_files = ['dataset.csv', 'X_train.csv', 'y_train.csv', 'X_test.csv', 'y_test.csv']
+    plt.figure(figsize= (20,7), dpi=200)
+    plt.title('Perbandingan Data latih dan Data Uji', fontsize=20)
+    plt.plot(climate_data['Tx'][:train_size], label='Data Latih')
+    plt.plot(climate_data['Tx'][train_size:], label='Data Uji')
+    plt.xlabel('Tahun', fontsize=14)
+    plt.ylabel('Suhu', fontsize=14)
+    plt.legend(loc='lower right', fontsize=14)
+    
+    with st.expander('Perbandingan Data latih dan Uji'):
+        st.pyplot(plt, use_container_width=True)
+        
+
+    # Download Zip dataset files
+    climate_data.to_csv('dataset.csv', index=False)
+    data_latih_x.to_csv('data_latih_x.csv', index=False)
+    data_latih_y.to_csv('data_latih_y.csv', index=False)
+    data_test_x.to_csv('data_test_x.csv', index=False)
+    data_test_y.to_csv('data_test_y.csv', index=False)
+    
+    list_files = ['dataset.csv', 'data_latih_x.csv', 'data_latih_y.csv', 'data_test_x.csv', 'data_test_y.csv']
     with zipfile.ZipFile('dataset.zip', 'w') as zipF:
         for file in list_files:
             zipF.write(file, compress_type=zipfile.ZIP_DEFLATED)
 
     with open('dataset.zip', 'rb') as datazip:
         btn = st.download_button(
-                label='Download ZIP',
+                label='Download Data ZIP',
                 data=datazip,
                 file_name="dataset.zip",
                 mime="application/octet-stream"
                 )
     
     # Display model parameters
-    st.header('Model parameters', divider='rainbow')
-    parameters_col = st.columns(3)
-    parameters_col[0].metric(label="Data split ratio (% for Training Set)", value=parameter_split_size, delta="")
-    parameters_col[1].metric(label="Number of estimators (n_estimators)", value=parameter_n_estimators, delta="")
-    parameters_col[2].metric(label="Max features (max_features)", value=parameter_max_features_metric, delta="")
-    
-    # Display feature importance plot
-    importances = rf.feature_importances_
-    feature_names = list(X.columns)
-    forest_importances = pd.Series(importances, index=feature_names)
-    df_importance = forest_importances.reset_index().rename(columns={'index': 'feature', 0: 'value'})
-    
-    bars = alt.Chart(df_importance).mark_bar(size=40).encode(
-             x='value:Q',
-             y=alt.Y('feature:N', sort='-x')
-           ).properties(height=250)
+    st.header('Parameter pelatihan model', divider='rainbow')
+    parameters_col = st.columns(4)
+    parameters_col[0].metric(label="Rasio Pelatihan", value=f'{size_latih}%', delta="")
+    parameters_col[1].metric(label="Jumlah Epoch", value=epoch, delta="")
+    parameters_col[2].metric(label="Batch Size", value=batch, delta="")
+    parameters_col[3].metric(label="Rasio Validasi", value=f'{val}%', delta="")
 
+    st.header('Performa model', divider='rainbow')
     performance_col = st.columns((2, 0.2, 3))
     with performance_col[0]:
-        st.header('Model performance', divider='rainbow')
-        st.dataframe(rf_results.T.reset_index().rename(columns={'index': 'Parameter', 0: 'Value'}))
+        st.subheader('Pelatihan')
+        st.info('Rendah lebih baik')
+        st.dataframe(metrics_latih, use_container_width=True)
     with performance_col[2]:
-        st.header('Feature importance', divider='rainbow')
-        st.altair_chart(bars, theme='streamlit', use_container_width=True)
+        st.subheader('Pengujian')
+        st.info('Rendah lebih baik')
+        st.dataframe(metrics_uji, use_container_width=True)
+        
+    plt.rcParams['font.size'] = 5
+    plt.rcParams['figure.dpi'] = 200
+    plt.rcParams['figure.figsize'] = (10, 3)
+
+    plt.figure(figsize=(10, 3), dpi=200)
+    plt.plot(dataX['Aktual'][::10], label='Aktual')
+    plt.plot(dataX['Prediksi'][::10], label='Prediksi')
+    plt.title('Perbandingan Data Latih Aktual vs Prediksi')
+    plt.xlabel('Jumlah Data')
+    plt.ylabel('Suhu')
+    plt.legend(loc='lower right')
+
+    with st.expander('Akurasi Pelatihan'):
+            st.pyplot(plt, use_container_width=True)
+
+    plt.figure(figsize=(10, 3))
+    plt.plot(dataY['Aktual'], label='Aktual')
+    plt.plot(dataY['Prediksi'], label='Prediksi')
+    plt.title('Perbandingan Data Uji Aktual vs Prediksi')
+    plt.xlabel('Jumlah Data')
+    plt.ylabel('Suhu')
+    plt.legend(loc= 'upper left')
+
+    with st.expander('Akurasi Pengujian'):
+            st.pyplot(plt, use_container_width=True)
 
     # Prediction results
-    st.header('Prediction results', divider='rainbow')
-    s_y_train = pd.Series(y_train, name='actual').reset_index(drop=True)
-    s_y_train_pred = pd.Series(y_train_pred, name='predicted').reset_index(drop=True)
-    df_train = pd.DataFrame(data=[s_y_train, s_y_train_pred], index=None).T
-    df_train['class'] = 'train'
-        
-    s_y_test = pd.Series(y_test, name='actual').reset_index(drop=True)
-    s_y_test_pred = pd.Series(y_test_pred, name='predicted').reset_index(drop=True)
-    df_test = pd.DataFrame(data=[s_y_test, s_y_test_pred], index=None).T
-    df_test['class'] = 'test'
+    st.header('Hasil Prediksi', divider='rainbow')
+
+    col = st.columns(4)
+    col[0].metric(label="Jumlah Hari", value=future, delta="")
+    col[1].metric(label="Suhu Terendah", value=f'{round(float(data_hasil.min()), 2)}°', delta=f'{round(anomali_suhu_terendah, 2)}°', delta_color="inverse")
+    col[2].metric(label="Suhu Tertinggi", value=f'{round(float(data_hasil.max()), 2)}°', delta=f'{round(anomali_suhu_tertinggi, 2)}°', delta_color="inverse")
+    col[3].metric(label="Suhu Rata-rata", value=f'{round(float(data_hasil.mean()), 2)}°', delta=f'{round(anomali_suhu_rata_rata, 2)}°', delta_color="inverse")
     
-    df_prediction = pd.concat([df_train, df_test], axis=0)
-    
+    plt.figure(figsize=(10, 4), dpi=200)
+    plt.plot(climate_data['Tx'][2950:], label='Data Historis')
+    plt.plot(data_hasil['Prediksi'], label='Prediksi')
+    plt.gca().set_facecolor(color='white')
+    plt.gcf().set_facecolor(color='white')
+    plt.title(f'Hasil Prediksi Suhu Jakarta {future} hari')
+    plt.xlabel('Tahun')
+    plt.ylabel('Suhu')
+    plt.legend()
+
     prediction_col = st.columns((2, 0.2, 3))
     
     # Display dataframe
     with prediction_col[0]:
-        st.dataframe(df_prediction, height=320, use_container_width=True)
+        st.markdown('Data Prediksi')
+        st.dataframe(data_hasil, height=320, use_container_width=True)
 
     # Display scatter plot of actual vs predicted values
     with prediction_col[2]:
-        scatter = alt.Chart(df_prediction).mark_circle(size=60).encode(
-                        x='actual',
-                        y='predicted',
-                        color='class'
-                  )
-        st.altair_chart(scatter, theme='streamlit', use_container_width=True)
+        st.markdown('Visualisasi')
+        st.pyplot(plt, use_container_width=True)
 
     
 # Ask for CSV upload if none is detected
 else:
-    st.warning('👈 Upload a CSV file or click *"Load example data"* to get started!')
+    st.warning('👆🏻 Klik Inisialisasi Model LSTM diatas dan klik Tombol MULAI untuk memulai proses.')
