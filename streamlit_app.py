@@ -74,7 +74,9 @@ Dzulfiqar Ramazan
         st.button('**Github**')
 
     st.header('Parameters Prediksi')
-    n_model = st.selectbox('Model Deep Learning:', ('LSTM', 'RNN')) 
+    n_model = st.selectbox('Model Deep Learning:', ('LSTM', 'RNN'))
+    if n_data == True:
+      st.markdown('*Data terupdate ke bulan Juni 2024*')
     
     st.write('Model terpilih:', n_model)
 
