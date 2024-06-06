@@ -190,7 +190,7 @@ if example_data:
 
         custom_objects = {'mse': MeanSquaredError()}
         if n_model == 'RNN':
-            model = load_model('rnn-3.3.3-juni-14-3.01.h5', custom_objects=custom_objects)
+            model = load_model('rnn.h5', custom_objects=custom_objects)
         else:
             model = load_model('lstm.h5', custom_objects=custom_objects)
         
