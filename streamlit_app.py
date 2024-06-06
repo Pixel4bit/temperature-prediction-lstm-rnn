@@ -74,13 +74,13 @@ Dzulfiqar Ramazan
         st.button('**Github**')
 
     st.header('Parameters Prediksi')
-    n_model = st.selectbox('Model Deep Learning:', ('LSTM', 'RNN'))
-    if n_data == True:
-      st.markdown('*Data terupdate ke bulan Juni 2024*')
+    n_model = st.selectbox('Model Deep Learning:', ('LSTM', 'RNN')) 
     
     st.write('Model terpilih:', n_model)
 
     n_data = st.checkbox('Update Data')
+    if n_data == True:
+        st.markdown('*Data terupdate ke bulan Juni 2024*')
 
     future = st.slider('Jumlah hari yang ingin diprediksi ke masa depan', 5, 365, 365, 5)
     
