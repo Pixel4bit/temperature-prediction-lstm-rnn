@@ -31,7 +31,7 @@ val = 10
 
 # Page title
 st.set_page_config(page_title='BMKG Deep Learning Prediction', page_icon='📈')
-st.title('📈 Temperature Prediction with Deep Learning algorithm')
+st.title('📈 Jakarta Temperature Prediction with Deep Learning algorithm')
 
 # Expander
 with st.expander('🌐 **Tentang Website Ini**'):
