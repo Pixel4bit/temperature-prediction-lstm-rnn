@@ -19,7 +19,6 @@ data_latih_x = pd.read_csv('https://raw.githubusercontent.com/Pixel4bit/Data-BMK
 data_latih_y = pd.read_csv('https://raw.githubusercontent.com/Pixel4bit/Data-BMKG/main/hasil/csv/data_latih_y.csv')
 data_test_x = pd.read_csv('https://raw.githubusercontent.com/Pixel4bit/Data-BMKG/main/hasil/csv/data_tes_x.csv')
 data_test_y = pd.read_csv('https://raw.githubusercontent.com/Pixel4bit/Data-BMKG/main/hasil/csv/data_tes_y.csv')
-dataX = pd.read_csv('https://raw.githubusercontent.com/Pixel4bit/Data-BMKG/main/hasil/csv/dataX.csv')
 data_februari = 'https://raw.githubusercontent.com/Pixel4bit/Data-BMKG/main/Raw_Dataset_BMKG_2013_2024_Jakarta_Pusat.csv'
 data_juni = 'https://raw.githubusercontent.com/Pixel4bit/Data-BMKG/main/dataset_2024-6/raw_dataset_bmkg_2013_2024-06_jakarta_pusat.csv'
 
@@ -312,10 +311,16 @@ if example_data:
     # Display data info
     st.header('Input data', divider='rainbow')
     col = st.columns(4)
-    col[0].metric(label="Jumlah Sampel Data", value=x.shape[0], delta="")
-    col[1].metric(label="Jumlah Variabel", value=climate_data.shape[1], delta="")
-    col[2].metric(label="Jumlah Sampel Pelatihan", value=len(data_untuk_dilatih), delta="")
-    col[3].metric(label="Jumlah Sampel Pengujian", value=len(data_untuk_ditest), delta="")
+    if n_data == True:
+        col[0].metric(label="Jumlah Sampel Data", value=x.shape[0], delta=f"{climate_data.shape[0] - 4049}")
+        col[1].metric(label="Jumlah Variabel", value=climate_data.shape[1], delta=f"{climate_data.shape[1] - 8}")
+        col[2].metric(label="Jumlah Sampel Pelatihan", value=len(data_untuk_dilatih), delta=f"{len(data_untuk_dilatih) - 3644}")
+        col[3].metric(label="Jumlah Sampel Pengujian", value=len(data_untuk_ditest), delta=f"{len(data_untuk_ditest) - 405}")
+    else:
+        col[0].metric(label="Jumlah Sampel Data", value=x.shape[0], delta="")
+        col[1].metric(label="Jumlah Variabel", value=climate_data.shape[1], delta="")
+        col[2].metric(label="Jumlah Sampel Pelatihan", value=len(data_untuk_dilatih), delta="")
+        col[3].metric(label="Jumlah Sampel Pengujian", value=len(data_untuk_ditest), delta="")
     
     with st.expander('Dataset Awal', expanded=True):
         st.dataframe(climate_data, height=210, use_container_width=True)
