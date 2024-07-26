@@ -442,18 +442,17 @@ if example_data:
     plt.ylabel('Suhu')
     plt.legend()
 
-    prediction_col = st.columns((2, 0.2, 3))
-    
-    # Display dataframe
-    with prediction_col[0]:
-        st.markdown('Data Prediksi')
-        st.dataframe(data_hasil, height=320, use_container_width=True)
+    fig = go.Figure()
+    fig.add_traces(go.Scatter(x= climate_data.index[2200:], y= climate_data['Tx'][2200:], mode='lines', line=dict(color='#134B70', width=2), name='Data Historis'))
+    fig.add_traces(go.Scatter(x= data_hasil.index, y= data_hasil['Prediksi'], mode='lines', line=dict(color='red', width=2), name='Prediksi'))
+    fig.update_layout(height=400, title=f'Hasil Prediksi Selama {future} Hari ke Masa Depan', xaxis_title='Tanggal', yaxis_title='Suhu')
+    fig.show()
 
-    # Display scatter plot of actual vs predicted values
-    with prediction_col[2]:
-        st.markdown('Visualisasi')
-        st.pyplot(plt, use_container_width=True)
+    st.markdown('Visualisasi')
+    st.plotly_chart(fig, use_container_width=True)
 
+    st.markdown('Data Hasil Prediksi')
+    st.dataframe(data_hasil, height=400, use_container_width=True)
     
 # Ask for CSV upload if none is detected
 else:
