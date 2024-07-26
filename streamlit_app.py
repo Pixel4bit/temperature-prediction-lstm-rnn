@@ -381,7 +381,7 @@ if example_data:
     parameters_col[1].metric(label="Jumlah Epoch", value=epoch, delta="")
     parameters_col[2].metric(label="Batch Size", value=batch, delta="")
     parameters_col[3].metric(label="Rasio Validasi", value=f'{val}%', delta="")
-    parameters_col[4].markdown(n_model)
+    parameters_col[4].metric(label="Model", value=n_model, delta=None)
 
     st.header('Performa model', divider='rainbow')
     performance_col = st.columns((2, 0.2, 3))
