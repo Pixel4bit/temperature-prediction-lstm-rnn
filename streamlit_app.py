@@ -397,16 +397,14 @@ if example_data:
     plt.rcParams['figure.dpi'] = 200
     plt.rcParams['figure.figsize'] = (10, 3)
 
-    plt.figure(figsize=(10, 3), dpi=200)
-    plt.plot(dataX['Aktual'][::10], label='Aktual')
-    plt.plot(dataX['Prediksi'][::10], label='Prediksi')
-    plt.title('Perbandingan Data Latih Aktual vs Prediksi')
-    plt.xlabel('Jumlah Data')
-    plt.ylabel('Suhu')
-    plt.legend(loc='lower right')
+    fig = go.Figure()
+    fig.add_traces(go.Scatter(x= dataX.index[::10], y= dataX['Aktual'][::10], mode='lines', line=dict(color='#134B70', width=2), name='Aktual'))
+    fig.add_traces(go.Scatter(x= dataX.index[::10], y= dataX['Prediksi'][::10], mode='lines', line=dict(color='red', width=2), name='Prediksi'))
+    fig.update_layout(height=200, title='Tingkat Akurasi antara Data Latih Aktual dan Data Latih Prediksi', xaxis_title='Jumlah Data', yaxis_title='Suhu')
+    fig.show()
 
     with st.expander('Akurasi Pelatihan'):
-            st.pyplot(plt, use_container_width=True)
+            st.plotly_chart(fig, use_container_width=True)
 
     plt.figure(figsize=(10, 3))
     plt.plot(dataY['Aktual'], label='Aktual')
@@ -416,8 +414,14 @@ if example_data:
     plt.ylabel('Suhu')
     plt.legend(loc= 'upper left')
 
+    fig = go.Figure()
+    fig.add_traces(go.Scatter(x= dataY.index, y= dataY['Aktual'], mode='lines', line=dict(color='#134B70', width=2), name='Aktual'))
+    fig.add_traces(go.Scatter(x= dataY.index, y= dataY['Prediksi'], mode='lines', line=dict(color='red', width=2), name='Prediksi'))
+    fig.update_layout(height=200, title='Tingkat Akurasi antara Data Uji Aktual dan Data Uji Prediksi', xaxis_title='Jumlah Data', yaxis_title='Suhu')
+    fig.show()
+
     with st.expander('Akurasi Pengujian'):
-            st.pyplot(plt, use_container_width=True)
+            st.plotly_chart(fig, use_container_width=True)
 
     # Prediction results
     st.header('Hasil Prediksi', divider='rainbow')
