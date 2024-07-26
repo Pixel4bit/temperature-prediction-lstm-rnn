@@ -4,6 +4,9 @@ import pandas as pd
 import numpy as np
 import altair as alt
 import matplotlib.pyplot as plt
+import plotly.express as px
+import plotly.graph_objects as go
+
 plt.style.use('seaborn-v0_8-whitegrid')
 plt.style.use('seaborn-v0_8-notebook')
 
@@ -52,7 +55,8 @@ with st.expander('🌐 **Tentang Website Ini**'):
 - NUMPY untuk perhitungan statistik, matriks, dll.
 - KERAS untuk memuat model LSTM yang sudah dilatih
 - SCIKIT-LEARN untuk proses normalisasi data dan evaluasi model LSTM
-- ALTAIR untuk grafik visualisasi
+- MATPLOTLIB untuk grafik visualisasi bawan
+- PLOTLY untuk grafik visualisasi interaktif
 - STREAMLIT untuk user interface
   ''', language='markdown')
 
@@ -341,18 +345,15 @@ if example_data:
             st.markdown('**y**')
             st.dataframe(data_test_y, height=210, hide_index=True, use_container_width=True)
     
-    plt.figure(figsize= (20,7), dpi=200)
-    plt.title('Perbandingan Data latih dan Data Uji', fontsize=20)
-    plt.plot(climate_data['Tx'][:train_size], label='Data Latih')
-    plt.plot(climate_data['Tx'][train_size:], label='Data Uji')
-    plt.xlabel('Tahun', fontsize=14)
-    plt.ylabel('Suhu', fontsize=14)
-    plt.legend(loc='lower right', fontsize=14)
+    fig = go.Figure()
+    fig.add_traces(go.Scatter(x=climate_data.index[:train_size], y=climate_data['Tx'][:train_size], mode='lines', line=dict(color='#134B70', width=2), name='Data Latih'))
+    fig.add_traces(go.Scatter(x=climate_data.index[train_size:], y=climate_data['Tx'][train_size:], mode='lines', line=dict(color='red', width=2), name='Data Uji'))
+    fig.update_layout(height=400, title='Perbandingan Data Latih dan Data Uji', xaxis_title='Tanggal', yaxis_title='Suhu')
+    fig.show()
     
     with st.expander('Perbandingan Data latih dan Uji'):
-        st.pyplot(plt, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True)
         
-
     # Download Zip dataset files
     climate_data.to_csv('dataset.csv', index=False)
     data_latih_x.to_csv('data_latih_x.csv', index=False)
