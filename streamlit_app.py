@@ -376,11 +376,12 @@ if example_data:
     
     # Display model parameters
     st.header('Parameter pelatihan model', divider='rainbow')
-    parameters_col = st.columns(4)
+    parameters_col = st.columns(5)
     parameters_col[0].metric(label="Rasio Pelatihan", value=f'{size_latih}%', delta="")
     parameters_col[1].metric(label="Jumlah Epoch", value=epoch, delta="")
     parameters_col[2].metric(label="Batch Size", value=batch, delta="")
     parameters_col[3].metric(label="Rasio Validasi", value=f'{val}%', delta="")
+    parameters_col[4].metrics(label="Model", value=n_model, delta="")
 
     st.header('Performa model', divider='rainbow')
     performance_col = st.columns((2, 0.2, 3))
