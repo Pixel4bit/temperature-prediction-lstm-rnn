@@ -400,7 +400,7 @@ if example_data:
     fig = go.Figure()
     fig.add_traces(go.Scatter(x= dataX.index[::10], y= dataX['Aktual'][::10], mode='lines', line=dict(color='#134B70', width=2), name='Aktual'))
     fig.add_traces(go.Scatter(x= dataX.index[::10], y= dataX['Prediksi'][::10], mode='lines', line=dict(color='red', width=2), name='Prediksi'))
-    fig.update_layout(height=200, title='Tingkat Akurasi antara Data Latih Aktual dan Data Latih Prediksi', xaxis_title='Jumlah Data', yaxis_title='Suhu')
+    fig.update_layout(height=400, title='Tingkat Akurasi antara Data Latih Aktual dan Data Latih Prediksi', xaxis_title='Jumlah Data', yaxis_title='Suhu')
     fig.show()
 
     with st.expander('Akurasi Pelatihan'):
@@ -417,7 +417,7 @@ if example_data:
     fig = go.Figure()
     fig.add_traces(go.Scatter(x= dataY.index, y= dataY['Aktual'], mode='lines', line=dict(color='#134B70', width=2), name='Aktual'))
     fig.add_traces(go.Scatter(x= dataY.index, y= dataY['Prediksi'], mode='lines', line=dict(color='red', width=2), name='Prediksi'))
-    fig.update_layout(height=200, title='Tingkat Akurasi antara Data Uji Aktual dan Data Uji Prediksi', xaxis_title='Jumlah Data', yaxis_title='Suhu')
+    fig.update_layout(height=400, title='Tingkat Akurasi antara Data Uji Aktual dan Data Uji Prediksi', xaxis_title='Jumlah Data', yaxis_title='Suhu')
     fig.show()
 
     with st.expander('Akurasi Pengujian'):
